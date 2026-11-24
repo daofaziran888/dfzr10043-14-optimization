@@ -37,21 +37,46 @@ export async function runAction(
   return await response.json()
 }
 
+export type ExportReceipt = {
+  evidenceId: string | null
+  version: string | null
+  manifestDigest: string | null
+  reviewConclusion: string | null
+}
+
 export async function downloadEntries(
   key: string,
   filters: Record<string, string> = {},
-): Promise<void> {
+): Promise<ExportReceipt> {
   const query = new URLSearchParams(filters).toString()
   const response = await request(`/api/${key}/export?${query}`)
   if (!response.ok) throw new Error('业务数据导出失败')
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${key}.csv`
   const url = URL.createObjectURL(await response.blob())
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `${key}.csv`
+  anchor.download = filename
   document.body.appendChild(anchor)
   anchor.click()
   document.body.removeChild(anchor)
   URL.revokeObjectURL(url)
+  return {
+    evidenceId: response.headers.get('X-Evidence-Id'),
+    version: response.headers.get('X-Evidence-Version'),
+    manifestDigest: response.headers.get('X-Manifest-Digest'),
+    reviewConclusion: decodeHeader(response.headers.get('X-Review-Conclusion')),
+  }
+}
+
+// 响应头只能放 latin-1，后端对中文结论做了百分号编码，这里还原后展示。
+function decodeHeader(value: string | null): string | null {
+  if (!value) return value
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 export async function loadOverview(): Promise<OverviewResult> {

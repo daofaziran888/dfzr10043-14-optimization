@@ -86,6 +86,13 @@
       </form>
     </div>
 
+    <p v-if="exportReceipt?.evidenceId" class="export-receipt" data-testid="export-receipt">
+      已生成导出证据 {{ exportReceipt.evidenceId }}（版本 {{ exportReceipt.version }}），
+      清单摘要 {{ exportReceipt.manifestDigest }}
+      <template v-if="exportReceipt.reviewConclusion">，本次复核结论 {{ exportReceipt.reviewConclusion }}</template>
+      。交接签收时请以此证据编号为准。
+    </p>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条{{ meta.name }}记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -103,6 +110,7 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/backend-service'
+import type { ExportReceipt } from '@/api/backend-service'
 import type { EntryRow } from '@/data/types'
 
 const props = defineProps<{ moduleKey: string }>()
@@ -110,6 +118,7 @@ const meta = moduleMeta(props.moduleKey)
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
+const exportReceipt = ref<ExportReceipt | null>(null)
 const filters = ref<Record<string, string>>({})
 const filterFields = meta.fields.slice(0, 3)
 const showCreate = ref(false)
@@ -137,8 +146,11 @@ function resetFilters() {
 
 async function exportRows() {
   errorMessage.value = ''
+  exportReceipt.value = null
   try {
-    await downloadEntries(meta.key, filters.value)
+    const receipt = await downloadEntries(meta.key, filters.value)
+    exportReceipt.value = receipt
+    await reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '导出失败'
   }

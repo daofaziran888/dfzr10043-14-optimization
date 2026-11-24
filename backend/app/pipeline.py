@@ -245,7 +245,7 @@ def collect_files_and_land_data(run_id: int, file_payloads: list[dict[str, Any]]
     }
     handoff_result, _ = handoff_svc.create_entry(handoff_values)
     handoff_svc.run_action(handoff_result["id"], "启动打包")
-    handoff_svc.run_action(handoff_result["id"], "确认交接")
+    handoff_svc.mark_delivered(handoff_result["id"])
 
     return {
         "status": "landed",

@@ -50,6 +50,7 @@ class Store:
         self._tables = {
             name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
         }
-
+        from app.services.sample_evidence import evidence_registry
+        evidence_registry.reset()
 
 store = Store()

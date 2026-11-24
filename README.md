@@ -73,6 +73,34 @@ npm run dev
 | 抽检样本 | `sample_check` | 抽检样本 | 样本编号、关联批次、抽样比例 |
 | 交接包 | `handoff_pack` | 交接包 | 交接编号、关联批次、目标系统 |
 
+## 抽检导出证据与交接验件
+
+抽检样本的导出件不是普通 CSV，而是一份可自校验、可回查的清单：
+
+- **抬头**写明文件名格式、证据编号、版本、生成时间、本次抽检采用的复核结论、
+  原样本范围（导出时命中的筛选条件）以及由样本行推导出的汇总。
+- **样本行**每行带 `行指纹`；抬头带 `清单摘要`（整份内容摘要）和 `签名`（HMAC）。
+  接收方只用这份文件就能复算汇总、发现被改动的行与抬头。
+- 每次导出都会登记一份**证据**，留存原文快照。同一批次再次导出会推进版本并
+  取代旧证据的签收资格；旧证据仍可按编号回查当时的复核结论与原样本范围。
+- 样本复核结论从通过改判为驳回时，会写入**改判记录**并撤销引用旧结论的证据。
+
+相关接口：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/sample_check/export` | 导出清单并登记证据，响应头带 `X-Evidence-Id`、`X-Manifest-Digest` |
+| GET | `/api/sample_check/evidence` | 列出导出证据，可按 `batch` 回查 |
+| GET | `/api/sample_check/evidence/{id}` | 查看证据详情与自校验结果 |
+| GET | `/api/sample_check/evidence/{id}/download?format=csv\|json` | 下载原文快照，支持 `Range` 续传 |
+| GET | `/api/sample_check/evidence/{id}/revisions` | 回查改判记录 |
+| POST | `/api/handoff_pack/verify-delivery` | 交接验件：资格核验 + 提交件逐行核对 |
+| POST | `/api/handoff_pack/{id}/signoff` | 凭证据办理签收，拒绝时返回当前资格核验版本 |
+| GET | `/api/handoff_pack/{id}/confirmation` | 回查交接确认及其关联证据 |
+
+签收必须提交导出件原文（`content`）或样本行（`rows`）。服务按行身份逐行比对，
+即使替换后的通过数与原件相同，也会拦下副本并指出被替换的样本。
+
 ## 约定
 
 - 全部模块共享`frontend/src/views/WorkbenchView.vue|tsx`和一套资源路由。
